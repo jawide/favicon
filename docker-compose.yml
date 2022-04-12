@@ -1,0 +1,15 @@
+version: '3.1'
+services:
+  favicon:
+    build:
+      context: .
+    image: favicon
+    restart: always
+    container_name: favicon
+    ports:
+      - "5558:5000"
+    volumes:
+      - log:/app/log
+
+volumes:
+  log: {}
