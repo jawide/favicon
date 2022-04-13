@@ -3,3 +3,4 @@ requests
 bs4
 flask_cors
 fake-useragent
+diskcache
