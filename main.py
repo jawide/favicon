@@ -8,7 +8,7 @@ from urllib import parse
 from diskcache import Cache
 from flask_cors import CORS
 from bs4 import BeautifulSoup
-from flask import Flask, Response, send_file
+from flask import Flask, Response, send_file, request
 
 
 app = Flask(__name__)
@@ -35,10 +35,12 @@ def index():
 @app.route("/<path:url>", methods=['GET'])
 def proxy(url):
     logging.info("url: %s", url)
-    result = cache.get(url)
-    if result:
-        logging.info("Hit cache")
-        return result
+    force = request.args.get("force")
+    if force is None:
+        result = cache.get(url)
+        if result:
+            logging.info("Hit cache")
+            return result
     url_pr = parse.urlparse(url)
     if not url_pr.scheme:
         return Response(f"'{url}' Lack schema", status=400)
@@ -69,10 +71,11 @@ def proxy(url):
             res = Response(f"'{image_url}' Response length is 0", status=400)
         else:
             res = send_file(BytesIO(image_res.content), mimetype=mimetype, download_name=download_name)
-            cache.set(url, res, expire=datetime.timedelta(weeks=4).total_seconds())
             break
+    cache.set(url, res, expire=datetime.timedelta(weeks=4).total_seconds())
     return res
 
 
 if __name__ == "__main__":
     app.run("0.0.0.0", 5000)
+    cache.close()
