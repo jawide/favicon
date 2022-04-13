@@ -45,10 +45,11 @@ def proxy(url):
     domain = parse.urlunparse((url_pr.scheme, url_pr.netloc, "", "", "", ""))
     logging.info("domain: %s", domain)
     image_urls = list(map(lambda e:parse.urljoin(e, "favicon.ico"), [url, domain]))
+    image_urls = list(set(image_urls))
     mimetype = "image/x-icon"
     res = requests.get(url, headers=get_header())
     soup = BeautifulSoup(res.content, features="html.parser")
-    icon_link = soup.find("link", {"rel":"shortcut icon"})
+    icon_link = soup.find("link", {"rel":"icon"}) or soup.find("link", {"rel":"shortcut"})
     if icon_link:
         image_url = icon_link.get("href")
         type = icon_link.get("type")
@@ -68,8 +69,8 @@ def proxy(url):
             res = Response(f"'{image_url}' Response length is 0", status=400)
         else:
             res = send_file(BytesIO(image_res.content), mimetype=mimetype, download_name=download_name)
+            cache.set(url, res, expire=datetime.timedelta(weeks=4).total_seconds())
             break
-    cache.set(url, res, expire=datetime.timedelta(weeks=4).total_seconds())
     return res
 
 
