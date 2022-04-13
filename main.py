@@ -1,18 +1,22 @@
 import os
-import requests
-from bs4 import BeautifulSoup
-from urllib import parse
-from flask import Flask, Response, send_file
-from flask_cors import CORS
-from io import BytesIO
 import logging
+import datetime
+import requests
 import fake_useragent
+from io import BytesIO
+from urllib import parse
+from diskcache import Cache
+from flask_cors import CORS
+from bs4 import BeautifulSoup
+from flask import Flask, Response, send_file
 
-logging.basicConfig(format='%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s', level=logging.DEBUG, filename='./log/log')
 
 app = Flask(__name__)
 CORS(app)
 fu = fake_useragent.UserAgent()
+logging.basicConfig(format='%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s', level=logging.DEBUG, filename='./log/log')
+cache = Cache(directory="./cache", size_limit=2 ** 30)
+
 
 def get_header(ua=fu.random):
     return {
@@ -31,6 +35,10 @@ def index():
 @app.route("/<path:url>", methods=['GET'])
 def proxy(url):
     logging.info("url: %s", url)
+    result = cache.get(url)
+    if result:
+        logging.info("Hit cache")
+        return result
     url_pr = parse.urlparse(url)
     if not url_pr.scheme:
         return Response(f"'{url}' Lack schema", status=400)
@@ -59,7 +67,9 @@ def proxy(url):
         elif len(image_res.content) == 0:
             res = Response(f"'{image_url}' Response length is 0", status=400)
         else:
-            return send_file(BytesIO(image_res.content), mimetype=mimetype, download_name=download_name)
+            res = send_file(BytesIO(image_res.content), mimetype=mimetype, download_name=download_name)
+            break
+    cache.set(url, res, expire=datetime.timedelta(weeks=4).total_seconds())
     return res
 
 

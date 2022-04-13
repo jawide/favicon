@@ -1,2 +1,7 @@
 # log file
-/log/log
+/log/*
+!/log/.gitkeep
+
+# cache file
+/cache/*
+!/cache/.gitkeep
