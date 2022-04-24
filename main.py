@@ -60,7 +60,7 @@ def proxy(url):
             image_urls = list(map(lambda e:parse.urljoin(e, image_url), [url, domain]))
         if type:
             mimetype = type
-    logging.info("image_urls: %s, %s", *image_urls)
+    logging.info("image_urls: %s", ", ".join(image_urls))
     download_name = os.path.basename(parse.urlparse(image_urls[0]).path)
     res = Response(status=500)
     for image_url in image_urls:
