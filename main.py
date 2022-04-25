@@ -2,11 +2,13 @@ import os
 import logging
 import datetime
 import requests
+import mimetypes
 import fake_useragent
 from io import BytesIO
 from urllib import parse
 from diskcache import Cache
 from flask_cors import CORS
+from thefuzz import process
 from bs4 import BeautifulSoup
 from flask import Flask, Response, send_file, request
 
@@ -17,6 +19,7 @@ fu = fake_useragent.UserAgent()
 logging.basicConfig(format='%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s', level=logging.DEBUG, filename='./log/log')
 cache = Cache(directory="./cache", size_limit=2 ** 30)
 icon_rel_list = ["icon", "shortcut", "apple-touch-icon"]
+image_mimetypes = list(filter(lambda e:e.startswith("image/"), mimetypes.types_map.values()))
 
 
 def get_header(ua=fu.random):
@@ -60,7 +63,9 @@ def proxy(url):
         for tlink in tlinks:
             logging.info("tlink: %s", tlink)
             icon_urls.append(tlink.get("href"))
-            icon_types.append(tlink.get("type"))
+            icon_type = tlink.get("type")
+            icon_type = process.extractOne(icon_type, image_mimetypes)[0] if icon_type else "image/x-icon"
+            icon_types.append(icon_type)
             if not parse.urlparse(icon_urls[-1]).scheme:
                 icon_urls[-1] = parse.urljoin(turl, icon_urls[-1])
         icon_urls.append(parse.urljoin(turl, "favicon.ico"))
