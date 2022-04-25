@@ -16,6 +16,7 @@ CORS(app)
 fu = fake_useragent.UserAgent()
 logging.basicConfig(format='%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s', level=logging.DEBUG, filename='./log/log')
 cache = Cache(directory="./cache", size_limit=2 ** 30)
+icon_rel_list = ["icon", "shortcut", "apple-touch-icon"]
 
 
 def get_header(ua=fu.random):
@@ -46,35 +47,40 @@ def proxy(url):
         return Response(f"'{url}' Lack schema", status=400)
     domain = parse.urlunparse((url_pr.scheme, url_pr.netloc, "", "", "", ""))
     logging.info("domain: %s", domain)
-    image_urls = list(map(lambda e:parse.urljoin(e, "favicon.ico"), [url, domain]))
-    image_urls = list(set(image_urls))
-    mimetype = "image/x-icon"
-    res = requests.get(url, headers=get_header())
-    soup = BeautifulSoup(res.content, features="html.parser")
-    icon_link = soup.find("link", {"rel":"icon"}) or soup.find("link", {"rel":"shortcut"})
-    if icon_link:
-        image_url = icon_link.get("href")
-        type = icon_link.get("type")
-        logging.info("icon_link: %s, %s", image_url, type)
-        if not parse.urlparse(image_url).scheme:
-            image_urls = list(map(lambda e:parse.urljoin(e, image_url), [url, domain]))
-        if type:
-            mimetype = type
-    logging.info("image_urls: %s", ", ".join(image_urls))
-    download_name = os.path.basename(parse.urlparse(image_urls[0]).path)
-    res = Response(status=500)
-    for image_url in image_urls:
-        image_res = requests.get(image_url, headers=get_header())
-        if image_res.status_code != 200:
-            res = Response(f"'{image_url}' Can't get", status=image_res.status_code)
-        elif len(image_res.content) == 0:
-            res = Response(f"'{image_url}' Response length is 0", status=400)
+    for turl in [url, domain]:
+        logging.info("turl: %s", turl)
+        res = requests.get(turl)
+        soup = BeautifulSoup(res.content, features="html.parser")
+        soup.find_all("link")
+        links = soup.find_all("link")
+        tlinks = filter(lambda e:set(e.get("rel")) & set(icon_rel_list), links)
+        tlinks = sorted(tlinks, key=lambda e:(-len(set(e.get("rel")) & set(icon_rel_list)), sum([icon_rel_list.index(i) if i in icon_rel_list else 0 for i in e.get("rel")])))
+        icon_urls = []
+        icon_types = []
+        for tlink in tlinks:
+            logging.info("tlink: %s", tlink)
+            icon_urls.append(tlink.get("href"))
+            icon_types.append(tlink.get("type"))
+            if not parse.urlparse(icon_urls[-1]).scheme:
+                icon_urls[-1] = parse.urljoin(turl, icon_urls[-1])
+        icon_urls.append(parse.urljoin(turl, "favicon.ico"))
+        icon_types.append("image/x-icon")
+        res = Response(status=500)
+        for icon_url, icon_type in zip(icon_urls, icon_types):
+            logging.info("icon_url: %s, icon_type: %s", icon_url, icon_type)
+            icon_res = requests.get(icon_url, headers=get_header())
+            if icon_res.status_code != 200:
+                res = Response(f"'{icon_url}' Can't get", status=icon_res.status_code)
+            elif len(icon_res.content) == 0:
+                res = Response(f"'{icon_url}' Response length is 0", status=400)
+            else:
+                res = send_file(BytesIO(icon_res.content), mimetype=icon_type, download_name=os.path.basename(parse.urlparse(icon_url).path))
+                break
         else:
-            res = send_file(BytesIO(image_res.content), mimetype=mimetype, download_name=download_name)
-            break
+            continue
+        break
     cache.set(url, res, expire=datetime.timedelta(weeks=4).total_seconds())
     return res
-
 
 if __name__ == "__main__":
     app.run("0.0.0.0", 5000)

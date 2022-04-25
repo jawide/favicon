@@ -8,6 +8,19 @@ http://favicon.com/http://baidu.com
 <img src="http://favicon.com/http://baidu.com"/>
 ```
 
+## 流程图
+
+```mermaid
+graph LR
+    url -- requests get --> dom
+    dom -- parse --> link1[< link type='icon' href='...'/>]
+    dom -- parse --> link2[< link type='shortcut'  href='...'/>]
+    dom -- parse --> link3[< link type='...'  href='...'/>]
+    url -- url + favicon.ico --> url_icon
+    url -- domain + favicion.ico --> domain_icon
+    link1 & link2 & link3 & url_icon & domain_icon --> icon_urls
+    icon_urls -- select --> icon
+```
 
 ## 部署
 
