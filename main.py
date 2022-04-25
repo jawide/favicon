@@ -10,7 +10,7 @@ from diskcache import Cache
 from flask_cors import CORS
 from thefuzz import process
 from bs4 import BeautifulSoup
-from flask import Flask, Response, send_file, request
+from flask import Flask, Response, send_file, request, send_from_directory
 
 
 app = Flask(__name__)
@@ -19,7 +19,7 @@ fu = fake_useragent.UserAgent()
 logging.basicConfig(format='%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s', level=logging.DEBUG, filename='./log/log')
 cache = Cache(directory="./cache", size_limit=2 ** 30)
 icon_rel_list = ["icon", "shortcut", "apple-touch-icon"]
-image_mimetypes = list(filter(lambda e:e.startswith("image/"), mimetypes.types_map.values()))
+image_mimetypes = list(filter(lambda e:e.startswith("image/"), mimetypes.types_map.values())) + ["image/x-icon"]
 
 
 def get_header(ua=fu.random):
@@ -38,6 +38,9 @@ def index():
 
 @app.route("/<path:url>", methods=['GET'])
 def proxy(url):
+    if url == "favicon.ico":
+        return send_from_directory(app.root_path, "favicon.svg", mimetype="image/svg+xml")
+    logging.info("\n\n")
     logging.info("url: %s", url)
     force = request.args.get("force")
     if force is None:
