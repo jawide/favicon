@@ -33,3 +33,10 @@ git clone https://github.com/jawide/favicon
 ```bash
 docker-compose up -d
 ```
+```bash
+# or
+mkdir favicon
+cd favicon
+wget https://raw.githubusercontent.com/jawide/favicon/master/docker-compose.yml
+docker compose up -d
+```
